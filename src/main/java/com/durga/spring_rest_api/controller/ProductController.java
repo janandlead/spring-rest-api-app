@@ -1,0 +1,85 @@
+package com.durga.spring_rest_api.controller;
+
+import java.util.List;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.durga.spring_rest_api.dto.ProductRequest;
+import com.durga.spring_rest_api.dto.ProductResponse;
+import com.durga.spring_rest_api.service.ProductService;
+
+import lombok.RequiredArgsConstructor;
+
+/**
+ * Exposes product retrieval, creation, and update operations at {@code /api/v1/products}.
+ */
+@RestController
+@RequestMapping("/api/v1/products")
+@RequiredArgsConstructor
+public class ProductController {
+
+	private final ProductService productService;
+
+	/**
+	 * Handles {@code GET /api/v1/products}.
+	 *
+	 * @return all products, or an empty list when no products exist
+	 */
+	@GetMapping
+	public List<ProductResponse> getProducts() {
+		return productService.getAllProducts();
+
+	}
+
+	/**
+	 * Handles {@code GET /api/v1/products/{id}}.
+	 * Spring converts the path segment to a {@link Long}; a nonnumeric value
+	 * produces HTTP 400 before the service is called.
+	 *
+	 * @param id product identifier from the URL path
+	 * @return the matching product
+	 * @throws org.springframework.web.server.ResponseStatusException if no product
+	 *                                                                exists (HTTP
+	 *                                                                404)
+	 */
+	@GetMapping("/{id}")
+	public ProductResponse getProductById(@PathVariable("id") Long id) {
+		return productService.getProductById(id);
+	}
+
+	/**
+	 * Handles {@code POST /api/v1/products}, creating an available product.
+	 *
+	 * @param productRequest JSON product details; price must be non-null
+	 * @return the saved product, including its generated ID (HTTP 200)
+	 */
+	@PostMapping
+	public ProductResponse addProduct(@RequestBody ProductRequest productRequest) {
+		return productService.createProduct(productRequest);
+
+	}
+
+	/**
+	 * Handles {@code PUT /api/v1/products/id/{id}}.
+	 * Updates name and price; category and availability retain their stored values.
+	 *
+	 * @param id identifier of the product to update
+	 * @param productRequest replacement name and non-null price
+	 * @return HTTP 200 with the updated product
+	 * @throws org.springframework.web.server.ResponseStatusException if the product does not exist
+	 */
+	@PutMapping("/id/{id}")
+	public ResponseEntity<ProductResponse> updateProduct(@PathVariable("id") Long id,
+			@RequestBody ProductRequest productRequest) {
+
+		return ResponseEntity.ok(productService.updateProduct(id, productRequest));
+
+	}
+}
