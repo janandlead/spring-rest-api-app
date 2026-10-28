@@ -58,7 +58,7 @@ sequenceDiagram
     participant DB as PostgreSQL
 
     C->>PC: HTTP request
-    PC->>PC: Bind path variables/request JSON
+    PC->>PC: Bind request data
     PC->>PS: Invoke product service
 
     alt GET all products
@@ -67,14 +67,14 @@ sequenceDiagram
         DB-->>PR: Product entities
         PR-->>PS: Product list
         PS->>PS: Map entities to ProductResponse
-        PS-->>PC: List<ProductResponse>
+        PS-->>PC: Product response list
     else GET product by id
         PS->>PR: findById
         PR->>DB: SELECT by primary key
         alt Product exists
             DB-->>PR: Product entity
             PR-->>PS: Optional product
-            PS->>PS: Map entity; null availability becomes false
+            PS->>PS: Map entity with null availability as false
             PS-->>PC: ProductResponse
         else Product is absent
             DB-->>PR: No row
@@ -82,7 +82,7 @@ sequenceDiagram
             PS-->>PC: ResponseStatusException 404
         end
     else POST create product
-        PS->>PS: Copy name/category/price
+        PS->>PS: Copy product fields
         PS->>PS: Set availability = true
         PS->>PR: save product
         PR->>DB: INSERT products
