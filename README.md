@@ -61,51 +61,51 @@ sequenceDiagram
     PC->>PC: Bind path variables/request JSON
     PC->>PS: Invoke product service
 
-    alt GET /api/v1/products
-        PS->>PR: findAll()
+    alt GET all products
+        PS->>PR: findAll
         PR->>DB: SELECT products
         DB-->>PR: Product entities
-        PR-->>PS: List<Product>
+        PR-->>PS: Product list
         PS->>PS: Map entities to ProductResponse
         PS-->>PC: List<ProductResponse>
-    else GET /api/v1/products/{id}
-        PS->>PR: findById(id)
+    else GET product by id
+        PS->>PR: findById
         PR->>DB: SELECT by primary key
         alt Product exists
             DB-->>PR: Product entity
-            PR-->>PS: Optional<Product>
+            PR-->>PS: Optional product
             PS->>PS: Map entity; null availability becomes false
             PS-->>PC: ProductResponse
         else Product is absent
             DB-->>PR: No row
-            PR-->>PS: Optional.empty()
-            PS-->>PC: ResponseStatusException (404)
+            PR-->>PS: No product
+            PS-->>PC: ResponseStatusException 404
         end
-    else POST /api/v1/products
+    else POST create product
         PS->>PS: Copy name/category/price
         PS->>PS: Set availability = true
-        PS->>PR: save(Product)
+        PS->>PR: save product
         PR->>DB: INSERT products
         DB-->>PR: Saved entity with generated ID
         PR-->>PS: Product entity
         PS-->>PC: ProductResponse
-    else PUT /api/v1/products/id/{id}
-        PS->>PR: findById(id)
+    else PUT product by id
+        PS->>PR: findById
         PR->>DB: SELECT by primary key
         alt Product exists
             DB-->>PR: Product entity
-            PR-->>PS: Optional<Product>
+            PR-->>PS: Optional product
             PS->>PS: Replace name and price
             Note over PS: Category and availability are preserved
-            PS->>PR: save(Product)
+            PS->>PR: save product
             PR->>DB: UPDATE products
             DB-->>PR: Updated entity
             PR-->>PS: Product entity
             PS-->>PC: ProductResponse
         else Product is absent
             DB-->>PR: No row
-            PR-->>PS: Optional.empty()
-            PS-->>PC: ResponseStatusException (404)
+            PR-->>PS: No product
+            PS-->>PC: ResponseStatusException 404
         end
     end
 
