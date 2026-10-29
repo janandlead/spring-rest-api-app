@@ -97,4 +97,13 @@ public class ProductServiceImpl implements ProductService {
 		return mapToResponse(updatedProduct);
 
 	}
+	
+	
+	public void deleteProduct(Long id) {
+		Product product = productRepository.findById(id).orElseThrow(
+				() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not found with id: " + id));
+
+		productRepository.delete(product);
+		
+	}
 }

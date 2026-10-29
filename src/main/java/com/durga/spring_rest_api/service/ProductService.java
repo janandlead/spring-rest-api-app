@@ -47,4 +47,7 @@ public interface ProductService {
 	 * @throws org.springframework.web.server.ResponseStatusException if no product exists (HTTP 404)
 	 */
 	ProductResponse updateProduct(Long id,ProductRequest productRequest);
+	
+	
+	void deleteProduct(Long id);
 }

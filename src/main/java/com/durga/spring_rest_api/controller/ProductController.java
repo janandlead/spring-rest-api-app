@@ -3,6 +3,7 @@ package com.durga.spring_rest_api.controller;
 import java.util.List;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -15,10 +16,12 @@ import com.durga.spring_rest_api.dto.ProductRequest;
 import com.durga.spring_rest_api.dto.ProductResponse;
 import com.durga.spring_rest_api.service.ProductService;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 /**
- * Exposes product retrieval, creation, and update operations at {@code /api/v1/products}.
+ * Exposes product retrieval, creation, update, and deletion operations at
+ * {@code /api/v1/products}.
  */
 @RestController
 @RequestMapping("/api/v1/products")
@@ -39,9 +42,9 @@ public class ProductController {
 	}
 
 	/**
-	 * Handles {@code GET /api/v1/products/{id}}.
-	 * Spring converts the path segment to a {@link Long}; a nonnumeric value
-	 * produces HTTP 400 before the service is called.
+	 * Handles {@code GET /api/v1/products/{id}}. Spring converts the path segment
+	 * to a {@link Long}; a nonnumeric value produces HTTP 400 before the service is
+	 * called.
 	 *
 	 * @param id product identifier from the URL path
 	 * @return the matching product
@@ -56,30 +59,54 @@ public class ProductController {
 
 	/**
 	 * Handles {@code POST /api/v1/products}, creating an available product.
+	 * <p>
+	 * Spring applies {@link Valid} to the bound request before invoking this method.
+	 * Invalid names produce a request validation exception handled by
+	 * {@link com.durga.spring_rest_api.exception.GlobalExceptionHandler} as HTTP 400.
+	 * Price has no validation constraint but must be non-null for the service.
 	 *
 	 * @param productRequest JSON product details; price must be non-null
 	 * @return the saved product, including its generated ID (HTTP 200)
 	 */
 	@PostMapping
-	public ProductResponse addProduct(@RequestBody ProductRequest productRequest) {
+	public ProductResponse addProduct(@Valid @RequestBody ProductRequest productRequest) {
 		return productService.createProduct(productRequest);
 
 	}
 
 	/**
-	 * Handles {@code PUT /api/v1/products/id/{id}}.
-	 * Updates name and price; category and availability retain their stored values.
+	 * Handles {@code PUT /api/v1/products/id/{id}}. Updates name and price;
+	 * category and availability retain their stored values.
+	 * <p>
+	 * This parameter does not use {@link Valid}, so the DTO's name constraints are
+	 * not checked by request-body validation for this endpoint.
 	 *
-	 * @param id identifier of the product to update
+	 * @param id             identifier of the product to update
 	 * @param productRequest replacement name and non-null price
 	 * @return HTTP 200 with the updated product
-	 * @throws org.springframework.web.server.ResponseStatusException if the product does not exist
+	 * @throws org.springframework.web.server.ResponseStatusException if the product
+	 *                                                                does not exist
 	 */
 	@PutMapping("/id/{id}")
 	public ResponseEntity<ProductResponse> updateProduct(@PathVariable("id") Long id,
 			@RequestBody ProductRequest productRequest) {
 
 		return ResponseEntity.ok(productService.updateProduct(id, productRequest));
+
+	}
+
+	/**
+	 * Handles {@code DELETE /api/v1/products/product/{id}} by deleting an existing
+	 * product.
+	 *
+	 * @param id identifier of the product to delete
+	 * @throws org.springframework.web.server.ResponseStatusException if no product
+	 *         exists (HTTP 404)
+	 */
+	@DeleteMapping("/product/{id}")
+	public void deleteProduct(@PathVariable("id") Long id) {
+
+		productService.deleteProduct(id);
 
 	}
 }
