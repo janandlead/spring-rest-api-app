@@ -5,7 +5,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 
 /**
  * Verifies that the Spring application context starts with the configured dependencies.
- * Requires access to the configured database.
+ * Uses the isolated H2 database configured in test resources.
  */
 @SpringBootTest
 class SpringRestApiApplicationTests {

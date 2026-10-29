@@ -9,8 +9,7 @@ import static org.mockito.Mockito.when;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
+import com.durga.spring_rest_api.exception.ProductNotFoundException;
 
 import com.durga.spring_rest_api.dto.ProductResponse;
 import com.durga.spring_rest_api.entity.Product;
@@ -42,14 +41,12 @@ class ProductServiceImplTests {
         assertFalse(response.isAvailable());
     }
 
-    /** Verifies that a missing ID produces HTTP 404 instead of a null response. */
+    /** Verifies that a missing ID raises the application's not-found exception. */
     @Test
     void throwsNotFoundForMissingProduct() {
         when(repository.findById(99L)).thenReturn(Optional.empty());
 
-        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+        assertThrows(ProductNotFoundException.class,
                 () -> service.getProductById(99L));
-
-        assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
     }
 }

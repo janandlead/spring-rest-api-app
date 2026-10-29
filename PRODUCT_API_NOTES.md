@@ -6,6 +6,38 @@ Before starting the application, set the `DB_PASSWORD` environment variable to y
 
 ## Endpoints
 
+### Product search examples
+
+Create two products using `POST /api/v1/products`, for example
+`{"name":"Keyboard","category":"Electronics","price":49.5}` and
+`{"name":"Mouse","category":"Electronics","price":19.5}`.
+Then call any of these URLs (GET):
+
+| URL | Repository method | Query style |
+| --- | --- | --- |
+| `/api/v1/products/search/derived?category=Electronics` | `findByCategory` | Spring Data derives the query from the method name |
+| `/api/v1/products/search/jpql?category=Electronics` | `getProductCategory` | JPQL uses the `Product` entity and its fields |
+| `/api/v1/products/search/native?name=Keyboard` | `gerProductName` | SQL matches the `name` column in the `products` database table |
+| `/api/v1/products/search/category-and-name?category=Electronics&name=Keyboard` | `getProductCategoryAndName` | JPQL combines category (`?1`) and name (`?2`) with `AND` |
+
+The first two return both products; the third and fourth return only Keyboard.
+All searches return HTTP 200 with a JSON array of `ProductResponse` objects,
+or `[]` when nothing matches. Matching uses equality without case normalization
+or substring matching; ordering is unspecified. The native search requires name;
+derived and JPQL searches require category; the combined search requires both (missing parameters return
+HTTP 400). URL-encode values containing spaces or special characters.
+
+These separate routes demonstrate the three repository query styles. Each flows
+through `ProductController` → `ProductService` → `ProductRepository`, then maps
+entities to response DTOs. Lists allow multiple products in the same category,
+including multiple rows matching both category and name.
+
+`ProductSearchTests` exercises these routes and actual repository queries using
+an isolated H2 database in PostgreSQL compatibility mode. Run `mvn test`; test
+database settings live in `src/test/resources/application.properties` and do not
+change the application's PostgreSQL configuration. H2 checks do not establish
+compatibility with a live PostgreSQL instance.
+
 | Method | Path | Behavior | Success |
 | --- | --- | --- | --- |
 | GET | `/api/v1/products` | Returns all products; an empty database returns `[]`. | 200 |
@@ -37,9 +69,9 @@ Example response when product 7 exists:
 2. `@PathVariable("id") Long id` binds the URL segment to the Java argument. This is a path variable, not a query parameter such as `?id=7`.
 3. The controller delegates to `ProductService.getProductById(id)`.
 4. `ProductRepository.findById(id)` returns an `Optional<Product>` using the entity's primary key. Spring Data supplies this method; no custom repository query is needed.
-5. The service maps the entity to `ProductResponse`, or throws `ResponseStatusException` with HTTP 404 when the ID is absent.
+5. The service maps the entity to `ProductResponse`, or throws `ProductNotFoundException` when the ID is absent; the global handler maps it to HTTP 404.
 
-A nonnumeric ID such as `/api/v1/products/abc` cannot be converted to `Long` and normally returns HTTP 400. A numeric ID with no matching row returns HTTP 404. The error body's fields and inclusion of the exception reason depend on Spring Boot error configuration.
+A nonnumeric ID such as `/api/v1/products/abc` cannot be converted to `Long` and normally returns HTTP 400. A numeric ID with no matching row returns HTTP 404. For a missing product, the global handler returns `ErrorResponse` with timestamp, status, error, message, and path.
 
 ## Create and update requests
 
@@ -83,20 +115,19 @@ For a missing product, the service uses:
 
 ```java
 Product product = productRepository.findById(id).orElseThrow(
-    () -> new ResponseStatusException(
-        HttpStatus.NOT_FOUND, "Product not found with id: " + id));
+    () -> new ProductNotFoundException("Product Not Found wiht id:" + id));
 ```
 
-`orElseThrow` returns the product when present and throws otherwise. `ResponseStatusException` is an unchecked exception that carries an HTTP status and reason. The current lookup, update, and delete operations use it to return HTTP 404 for an absent ID.
+`orElseThrow` returns the product when present and throws otherwise. `ProductNotFoundException` is translated to HTTP 404 by `GlobalExceptionHandler`. Lookup, update, and delete throw it for an absent ID.
 
 | Failure | Handling in this project | HTTP status |
 | --- | --- | --- |
-| Missing product in lookup, update, or delete | Service throws `ResponseStatusException` | 404 |
+| Missing product in lookup, update, or delete | Service throws `ProductNotFoundException`; global handler returns `ErrorResponse` | 404 |
 | Invalid POST product name | Global handler handles `MethodArgumentNotValidException` | 400 |
 | Nonnumeric ID or malformed JSON | Spring MVC error handling; not the custom validation handler | Normally 400 |
 | Missing/null price with otherwise valid input reaching a save | Null unboxing fails; no custom handler is defined | Normally 500 |
 
-Only the name-validation case has the custom response format shown below. Other error bodies depend on Spring's error handling and configuration.
+Name validation uses the validation response shown below. Missing products use `ErrorResponse` with HTTP 404. The handler also maps `DuplicateProductException` to HTTP 409, although the current create service does not explicitly detect duplicates. Other error bodies depend on Spring configuration.
 
 ## Bean Validation and `@Valid`
 
@@ -160,7 +191,7 @@ public class GlobalExceptionHandler {
 }
 ```
 
-`@RestControllerAdvice` makes this advice available across controllers and writes returned bodies as response content. `@ExceptionHandler` selects the exception type handled by this method. Global scope does not mean every exception is caught: this class currently handles only `MethodArgumentNotValidException`.
+`@RestControllerAdvice` makes this advice available across controllers and writes returned bodies as response content. `@ExceptionHandler` selects the exception type handled by this method. Global scope does not mean every exception is caught: this class handles `MethodArgumentNotValidException`, `ProductNotFoundException`, and `DuplicateProductException`. The excerpt above shows the validation handler only.
 
 `getBindingResult().getFieldErrors()` provides the failed fields and constraint messages. The handler collects them into a map and builds `ValidationErrorResponse`, whose fields are `timestamp`, `status`, `error`, and `validationErrors`. `ResponseEntity` sets the actual HTTP status to 400; the body's `status` field merely reports that same value.
 
@@ -195,12 +226,30 @@ Omitting `name` or sending it as null produces `"Name is required"`. The timesta
 
 ## Verification
 
-`ProductServiceImplTests` covers lookup mapping with null availability and HTTP 404 status on a missing product. It uses a mocked repository and does not verify HTTP routing or a live database.
+Run the search scenarios with:
 
-Run it when Maven dependencies are available:
+```shell
+mvn -Dtest=ProductSearchTests test
+```
+
+The latest run passed all 12 test invocations with zero failures or errors. `ProductSearchTests` uses MockMvc and actual repository queries against H2 in PostgreSQL compatibility mode. It seeds Keyboard/Electronics, Mouse/Electronics, and Keyboard/Office, each priced at 49.5, and rolls back each test.
+
+Covered scenarios:
+
+- Derived and JPQL category searches return both Electronics products, map null availability to false, and expose numeric IDs and the expected price.
+- Native search with `name=Keyboard` returns both Keyboards across categories, excluding Mouse. The call flows through `searchNative` to `getProductsByNameNative` to `gerProductName`, which executes `select * from products where name=:name`.
+- The combined search returns only the Keyboard in Electronics.
+- All four routes return HTTP 200 with `[]` for unmatched values and HTTP 400 when required query parameters are missing.
+- Supplying only category to the native search returns HTTP 400; native search requires name.
+- Supplying only category to the combined search returns HTTP 400; both fields are required.
+
+See the [README test scenario table](README.md#search-test-scenarios) for concrete requests and expected results. The two-product examples earlier in these notes return one Keyboard; the three-product test fixture deliberately includes a second Keyboard in another category.
+
+`ProductServiceImplTests` separately covers response mapping, null availability, and `ProductNotFoundException` for missing IDs using a mocked repository. It does not assert HTTP status or error-body mapping. `SpringRestApiApplicationTests` checks context startup using H2.
 
 ```shell
 mvn -Dtest=ProductServiceImplTests test
+mvn test
 ```
 
-The previous execution was blocked because the Spring Boot parent dependency was unavailable locally and dependency downloads were restricted. These notes were checked against the DTO, controller, service, exception handler, and dependency declarations; no live endpoint calls were run for this documentation update. The existing service tests do not establish HTTP validation or the global handler's response behavior.
+No tests were rerun for this documentation-only update. The recorded search results establish local H2 behavior, not compatibility with a live PostgreSQL instance. The search suite does not cover create/update validation or the custom not-found and duplicate-product error responses.

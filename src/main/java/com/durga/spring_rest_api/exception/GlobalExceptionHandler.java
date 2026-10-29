@@ -11,12 +11,14 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 /**
  * Supplies shared HTTP error handling for REST controllers.
  * <p>
- * Handles request-body Bean Validation failures only. Other exceptions, including
- * {@link org.springframework.web.server.ResponseStatusException}, remain subject
- * to Spring's other exception resolvers and error handling.
+ * Handles request-body Bean Validation failures only. Other exceptions,
+ * including {@link org.springframework.web.server.ResponseStatusException},
+ * remain subject to Spring's other exception resolvers and error handling.
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -44,6 +46,38 @@ public class GlobalExceptionHandler {
 
 		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(validationErrorResponse);
 
+	}
+
+	@ExceptionHandler(ProductNotFoundException.class)
+	public ResponseEntity<ErrorResponse> handleProductNotFoundException(ProductNotFoundException productNotFoundException,
+			HttpServletRequest httpServletRequest){
+		
+		
+		ErrorResponse errorResponse=ErrorResponse.builder()
+				.timestamp(LocalDateTime.now())
+				.status(HttpStatus.NOT_FOUND.value())
+				.error(HttpStatus.NOT_FOUND.getReasonPhrase())
+				.message(productNotFoundException.getMessage())
+				.path(httpServletRequest.getRequestURI()).build();
+		
+		return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+		
+	}
+	
+	@ExceptionHandler(DuplicateProductException.class)
+	public ResponseEntity<ErrorResponse> handleDuplicateProductException(DuplicateProductException productNotFoundException,
+			HttpServletRequest httpServletRequest){
+		
+		
+		ErrorResponse errorResponse=ErrorResponse.builder()
+				.timestamp(LocalDateTime.now())
+				.status(HttpStatus.CONFLICT.value())
+				.error(HttpStatus.CONFLICT.getReasonPhrase())
+				.message(productNotFoundException.getMessage())
+				.path(httpServletRequest.getRequestURI()).build();
+		
+		return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);
+		
 	}
 
 }

@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.durga.spring_rest_api.dto.ProductRequest;
@@ -29,6 +30,48 @@ import lombok.RequiredArgsConstructor;
 public class ProductController {
 
 	private final ProductService productService;
+
+	/**
+	 * Handles GET /api/v1/products/search/derived using equality matching.
+	 * @param category required category query parameter
+	 * @return matching product responses, or an empty list (HTTP 200)
+	 */
+	@GetMapping("/search/derived")
+	public List<ProductResponse> searchDerived(@RequestParam("category") String category) {
+		return productService.getProductsByCategory(category);
+	}
+
+	/**
+	 * Handles GET /api/v1/products/search/jpql using equality matching.
+	 * @param category required category query parameter
+	 * @return matching product responses, or an empty list (HTTP 200)
+	 */
+	@GetMapping("/search/jpql")
+	public List<ProductResponse> searchJpql(@RequestParam("category") String category) {
+		return productService.getProductsByCategoryJpql(category);
+	}
+
+	/**
+	 * Handles GET /api/v1/products/search/native using equality matching.
+	 * @param name required name query parameter
+	 * @return matching product responses, or an empty list (HTTP 200)
+	 */
+	@GetMapping("/search/native")
+	public List<ProductResponse> searchNative(@RequestParam("name") String name) {
+		return productService.getProductsByNameNative(name);
+	}
+
+	/**
+	 * Handles GET /api/v1/products/search/category-and-name using equality matching.
+	 * @param category required category query parameter
+	 * @param name required name query parameter
+	 * @return matching product responses, or an empty list (HTTP 200)
+	 */
+	@GetMapping("/search/category-and-name")
+	public List<ProductResponse> searchCategoryAndName(@RequestParam("category") String category,
+			@RequestParam("name") String name) {
+		return productService.getProductsByCategoryAndName(category, name);
+	}
 
 	/**
 	 * Handles {@code GET /api/v1/products}.

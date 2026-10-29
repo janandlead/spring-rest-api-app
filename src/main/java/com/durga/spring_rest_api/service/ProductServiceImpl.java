@@ -9,6 +9,7 @@ import org.springframework.web.server.ResponseStatusException;
 import com.durga.spring_rest_api.dto.ProductRequest;
 import com.durga.spring_rest_api.dto.ProductResponse;
 import com.durga.spring_rest_api.entity.Product;
+import com.durga.spring_rest_api.exception.ProductNotFoundException;
 import com.durga.spring_rest_api.repository.ProductRepository;
 
 /**
@@ -41,9 +42,33 @@ public class ProductServiceImpl implements ProductService {
 
 	/** {@inheritDoc} */
 	@Override
+	public List<ProductResponse> getProductsByCategory(String category) {
+		return productRepository.findByCategory(category).stream().map(this::toResponse).toList();
+	}
+
+	/** {@inheritDoc} */
+	@Override
+	public List<ProductResponse> getProductsByCategoryJpql(String category) {
+		return productRepository.getProductCategory(category).stream().map(this::toResponse).toList();
+	}
+
+	/** {@inheritDoc} */
+	@Override
+	public List<ProductResponse> getProductsByNameNative(String name) {
+		return productRepository.gerProductName(name).stream().map(this::toResponse).toList();
+	}
+
+	/** {@inheritDoc} */
+	@Override
+	public List<ProductResponse> getProductsByCategoryAndName(String category, String name) {
+		return productRepository.getProductCategoryAndName(category, name).stream().map(this::toResponse).toList();
+	}
+
+	/** {@inheritDoc} */
+	@Override
 	public ProductResponse getProductById(Long id) {
 		Product product = productRepository.findById(id).orElseThrow(
-				() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not found with id: " + id));
+				() -> new ProductNotFoundException("Product Not Found wiht id:"+id));
 		return toResponse(product);
 	}
 
@@ -87,7 +112,7 @@ public class ProductServiceImpl implements ProductService {
 	public ProductResponse updateProduct(Long id, ProductRequest productRequest) {
 
 		Product product = productRepository.findById(id).orElseThrow(
-				() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not found with id: " + id));
+				() -> new ProductNotFoundException("Product Not Found wiht id:"+id));
 
 		product.setName(productRequest.getName());
 		product.setPrice(productRequest.getPrice());
@@ -99,9 +124,10 @@ public class ProductServiceImpl implements ProductService {
 	}
 	
 	
+	/** {@inheritDoc} */
 	public void deleteProduct(Long id) {
 		Product product = productRepository.findById(id).orElseThrow(
-				() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not found with id: " + id));
+				() -> new ProductNotFoundException("Product Not Found wiht id:"+id));
 
 		productRepository.delete(product);
 		

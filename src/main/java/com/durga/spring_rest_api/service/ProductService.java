@@ -9,6 +9,35 @@ import com.durga.spring_rest_api.dto.ProductResponse;
  * Defines product retrieval, creation, and update operations for the API layer.
  */
 public interface ProductService {
+
+	/**
+	 * Retrieves products by category using a derived query.
+	 * @param category category to match by equality
+	 * @return matching product responses, or an empty list
+	 */
+	List<ProductResponse> getProductsByCategory(String category);
+
+	/**
+	 * Retrieves products by category using JPQL.
+	 * @param category category to match by equality
+	 * @return matching product responses, or an empty list
+	 */
+	List<ProductResponse> getProductsByCategoryJpql(String category);
+
+	/**
+	 * Retrieves products by name using native SQL.
+	 * @param name product name to match by equality
+	 * @return matching product responses across categories, or an empty list
+	 */
+	List<ProductResponse> getProductsByNameNative(String name);
+
+	/**
+	 * Retrieves products matching both category and name using JPQL.
+	 * @param category category to match by equality
+	 * @param name product name to match by equality
+	 * @return product responses matching both values, or an empty list
+	 */
+	List<ProductResponse> getProductsByCategoryAndName(String category, String name);
 	
 	/**
 	 * Retrieves all products as response DTOs.
@@ -49,5 +78,10 @@ public interface ProductService {
 	ProductResponse updateProduct(Long id,ProductRequest productRequest);
 	
 	
+	/**
+	 * Deletes an existing product.
+	 * @param id identifier of the product to delete
+	 * @throws com.durga.spring_rest_api.exception.ProductNotFoundException if no product exists
+	 */
 	void deleteProduct(Long id);
 }
